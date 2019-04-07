@@ -11,5 +11,7 @@ About the Author
 Leihua Ye is a Ph.D. Candidate in political science and has received a Master’s degree in Statistics from the University of California, Santa Barbara. Leihua is interested in elections, public opinion and behavior, research design, big data, and Machine Learning.
 
 Contact
+
 yeleihua@gmail.com
+
 www.linkedin.com/in/leihuaye

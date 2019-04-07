@@ -1,1 +1,1 @@
-# Comparing-Multiple-Classifiers-of-Imbalanced-Data-Distribution-
+In this project, I will compare the performances of multiple classifiers when the data distribution is imbalanced with one overwhelming number of category. There are two files: the one named "bank-additional-full" is the dataset that will be used and the other Rmd file contains R commands for the project. 

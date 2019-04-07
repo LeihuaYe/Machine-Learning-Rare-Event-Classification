@@ -1,4 +1,4 @@
-****  Project Summary ****
+# Project Summary
 
 This repository aims to compare the performances of multiple machine learning (ML) algorisms when the data distribution is highly imbalanced with one overwhelming response category. The dataset was randomly divided into two parts: training and test sets. Then, I will develop a statistical model out of the training set and apply it to the test set, recording down the misclassification errors. Furthermore, I will use ROC and AUC to compare the performances and conclude KNN, as a non-parametrical method, outperforms the others when the distribution is highly imbalanced. 
 

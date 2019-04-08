@@ -1,0 +1,72 @@
+####Results
+So far, we have calculated training and test errors for all of these five classification methods. KNN has the largest test error, and SVM has the smallest test error. However, the margins of differences are negligible. Also, it should be pointed out that random forests overfit the training set as its training error is relatively small, but the test error is large. So, ROC curves and area under the curves (AUC) are needed to further compare these models.
+
+ROC is a graphical plot that illustrates the relationship between true positive rate (TPR) and false positive rate (FPR). The following steps are necessary to plot ROC curves and calculate AUC, respectively. 
+```{r}
+########### ROC curves and AUC for logistic regression  ###########
+library(ROCR)
+#creating a tracking record
+Area_Under_the_Curve = matrix(NA, nrow=5, ncol=1) # for KNN, Logistic Regression, Decision Tree, KNN, SVM.
+colnames(Area_Under_the_Curve) <- c("AUC") 
+rownames(Area_Under_the_Curve) <- c("Logistic","Tree","KNN","Random Forests","SVM")
+#ROC for logistic regression
+prob_test <- predict(glm.fit,banking.test,type="response")
+pred_logit<- prediction(prob_test,banking.test$y)
+performance_logit <- performance(pred_logit,measure = "tpr", x.measure="fpr")
+#Area under the curve (AUC) for logistical regression 
+auc_logit = performance(pred_logit, "auc")@y.values
+Area_Under_the_Curve[1,] <-c(as.numeric(auc_logit))
+
+########### ROC curves and AUC for decision tree  ########### 
+#ROC curves for decision tree 
+pred_DT<-predict(bank_tree.pruned, banking.test,type="vector")
+pred_DT <- prediction(pred_DT[,2],banking.test$y)
+performance_DT <- performance(pred_DT,measure = "tpr",x.measure= "fpr")
+#Area under the curve (AUC) for decision tree 
+auc_dt = performance(pred_DT,"auc")@y.values
+Area_Under_the_Curve[2,] <- c(as.numeric(auc_dt))
+
+########### ROC curves and AUC for KNN  ###########  
+knn_model = knn(train=XTrain, test=XTrain, cl=YTrain, k=20,prob=TRUE)
+prob <- attr(knn_model, "prob")
+prob <- 2*ifelse(knn_model == "-1", prob,1-prob) - 1
+pred_knn <- prediction(prob, YTrain)
+performance_knn <- performance(pred_knn, "tpr", "fpr")
+#Area under the curve (AUC) for KNN
+auc_knn <- performance(pred_knn,"auc")@y.values
+Area_Under_the_Curve[3,] <- c(as.numeric(auc_knn))
+
+########### ROC curves and AUC for random forests  ########### 
+#ROC curves for random forests 
+pred_RF<-predict(RF_banking_train, banking.test,type="prob")
+pred_class_RF <- prediction(pred_RF[,2],banking.test$y)
+performance_RF <- performance(pred_class_RF,measure = "tpr",x.measure= "fpr")
+#Area under the curve (AUC) for decision tree 
+auc_RF = performance(pred_class_RF,"auc")@y.values
+Area_Under_the_Curve[4,] <- c(as.numeric(auc_RF))
+
+########### ROC curves and AUC for SVM  ###########  
+svm_fit_prob = predict(svm_fit,type="prob",newdata=banking.test,probability=TRUE)
+svm_fit_prob_ROCR = prediction(attr(svm_fit_prob,"probabilities")[,2],banking.test$y=="yes")
+performance_svm <- performance(svm_fit_prob_ROCR, "tpr","fpr")
+#Area under the curve (AUC) for svm
+auc_svm<-performance(svm_fit_prob_ROCR,"auc")@y.values[[1]]
+Area_Under_the_Curve[5,] <- c(as.numeric(auc_svm))
+```
+As can be easily seen from the plot, KNN (blue line) has a steeper slope and so is preferred over the others, which can be further supported by its largest AUC value (0.847). In comparison, other classifiers have AUC below 0.8. In the context of the banking example, TPR refers to the percentage of clients who predicted to subscribe a term deposit out of the total population who actually did, and FPR is the percentage of people who predicted to subscribe a deposit out of the total number of people who actually did not subscribe. Thus, we are more interested in false positive, because this group of people who predicted to subscribe but actually haven't done so is our targeting group, meaning they fit the criteria of subscribing but haven't made up their mind yet. So, the next step for the marketing and sales teams is to target this group of clients instead of the total population.
+```{r}
+########### ROC plots for these five classification methods ###########
+plot(performance_logit,col=2,lwd=2,main="ROC Curves for These Five Classification Methods")#logit
+legend(0.6, 0.6, c('logistic', 'Decision Tree', 'KNN','Random Forests','SVM'), 2:6)
+plot(performance_DT,col=3,lwd=2,add=TRUE)#decision tree
+plot(performance_knn,col=4,lwd=2,add=TRUE)#knn
+plot(performance_RF,col=5,lwd=2,add=TRUE)#RF
+plot(performance_svm,col=6,lwd=2,add=TRUE)#svm
+abline(0,1)
+Area_Under_the_Curve
+```
+Furthermore, a confusion table for the best performing method (KNN) is constructed. TPR = 170/(170+734)=0.188, and FPR = 173/(173+7161)= 0.024. With asymmetrical distribution, we have successfully maintained a low level of FPR but the TPR is undesirably low as well. It is impossible to infer what factors lead to such low level of TPR simply based on the evidences available; more researches need to be done.
+```{r}
+#the confusion table
+table(truth = banking.test$y,predictions = pred.YTest)
+```

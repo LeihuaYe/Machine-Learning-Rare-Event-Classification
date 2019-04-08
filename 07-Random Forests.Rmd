@@ -1,0 +1,13 @@
+Next, random forests is an ensemble learning method that constructs a number of decision trees before moving on to classifying on the basis of mode. Therefore, random forest is a more accurate classification method than decision tree. 
+```{r}
+set.seed(1)
+RF_banking_train = randomForest(y ~ ., data=banking.train, importance=TRUE)#random forests with default settings
+######### training and test errors of bank_tree.pruned
+pred_train_RF = predict(RF_banking_train, banking.train, type="class")
+pred_test_RF  = predict(RF_banking_train, banking.test,  type="class")
+#####training error
+RF_training_error <- calc_error_rate(predicted.value=pred_train_RF, true.value=YTrain)
+####test error
+RF_test_error <- calc_error_rate(predicted.value=pred_test_RF, true.value=YTest)
+records[4,] <- c(RF_training_error,RF_test_error)
+```

@@ -1,0 +1,19 @@
+```{r}
+#split the dataset into training and test sets
+set.seed(1)
+index = round(nrow(banking)*0.2,digits=0)
+test.indices = sample(1:nrow(banking), index)
+banking.train=banking[-test.indices,] #80% training set
+banking.test=banking[test.indices,]   #20% test set
+YTrain = banking.train$y
+XTrain = banking.train %>% select(-y)
+YTest = banking.test$y
+XTest = banking.test %>% select(-y)
+records = matrix(NA, nrow=5, ncol=2) #creating a tracking record for KNN, Logistic Regression, Decision Tree, KNN, SVM.
+colnames(records) <- c("train.error","test.error") 
+rownames(records) <- c("Logistic","Tree","KNN","Random Forests","SVM")
+#######define the error rate function
+calc_error_rate <- function(predicted.value, true.value){
+  return(mean(true.value!=predicted.value)) 
+}
+```

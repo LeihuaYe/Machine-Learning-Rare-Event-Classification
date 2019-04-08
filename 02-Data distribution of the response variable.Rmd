@@ -1,0 +1,4 @@
+```{r}
+plot(banking$y,main="Plot 1: Distribution of Dependent Variable")
+```
+As can be seen from plot 1, we obtain a visual understanding of the asymmetrical nature of the distribution with more “no”s than “yes”s. To begin with, the whole dataset is divided into two sets: training and test. I will use the first set to develop and train the statistical models and then apply the model to the second set to test for the prediction performance. In the meanwhile, I will record the training and test errors for all classifiers, respectively. 

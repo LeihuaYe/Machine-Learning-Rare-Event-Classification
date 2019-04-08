@@ -1,0 +1,16 @@
+Logistic regression is a classification method that predicts the logit transformation of the probability of binary response variable. We choose "logit" as the link function and fit a logistic regression to the training set with all other variables as predictors. Then, we predict for the classifications for each y in the training set and calculate the training error based on the model. Similar steps are adopted for the test error.
+```{r}
+#####fit logistic model
+glm.fit = glm(y ~ age+factor(job)+factor(marital)+factor(education)+factor(default)+factor(housing)+factor(loan)+factor(contact)+factor(month)+factor(day_of_week)+campaign+previous+factor(poutcome)+emp.var.rate+cons.price.idx+cons.conf.idx+euribor3m+nr.employed, data=banking.train, family=binomial)
+######get train error######
+prob.training = predict(glm.fit,type="response")
+banking.train_glm = banking.train %>%
+  mutate(predicted.value=as.factor(ifelse(prob.training<=0.5, "no", "yes")))
+logit_traing_error<-calc_error_rate(predicted.value=banking.train_glm$predicted.value, true.value=YTrain)
+######get test error######
+prob.test = predict(glm.fit,banking.test,type="response")
+banking.test_glm = banking.test %>%
+  mutate(predicted.value2=as.factor(ifelse(prob.test<=0.5, "no", "yes")))
+logit_test_error <- calc_error_rate(predicted.value=banking.test_glm$predicted.value2, true.value=YTest)
+records[1,] <- c(logit_traing_error,logit_test_error)#write into the first row
+```

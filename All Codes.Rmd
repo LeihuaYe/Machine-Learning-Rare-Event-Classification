@@ -1,0 +1,287 @@
+---
+title: "Multiple Classification Methods of Asymmetrical Data: A Case Study of Direct Marketing Event in a Portuguese Banking Institution"
+author: "Leihua Ye"
+date: "4/5/2019"
+output: 
+  pdf_document: 
+    latex_engine: xelatex
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("readr","knitr","dplyr","plyr","reshape2","caret","pROC","tree","randomForest","e1071")
+library(readr)
+library(knitr)
+library(dplyr)
+library(plyr)
+library(class)
+library(reshape2)
+library(tree)
+library(randomForest)
+library(car)
+library(e1071)
+```
+
+#Abstract
+What is the best classification method? This is the most frequently asked classification question in machine learning (ML). Currently, ML engineers have tried to answer the question from various perspectives including data type but left another perspective – the distribution of the response variable – unexplored. This project aims to fill the gap by applying various ML techniques – logistic model, decision tree, KNN, random forest, and support vector machines (SVM) – to a banking institution in Portugal, identifying potential customers who will subscribe to a banking service. To measure the performance of each classifier, I will adopt the following metrics: training/test errors, ROC, and AUC. As it turns out, all classifiers have very close training and test errors with marginal differences, and ROC and AUC identify KNN as the best fitting model. In the end, the paper concludes non-parametric classifiers like KNN has comparative advantage when there is an unsymmetrical distribution. 
+
+##Introduction
+There are various classifiers in the field of ML, and it is possible to select the best performing technique on the basis of their ability of predicting outcomes accurately. Specifically, best model comes with the smallest train/test errors after cross-validation. We may have different classifiers under various scenarios, and one remaining question is under what conditions one type of method is preferred over others. Is it possible to come up with a general classifier that outperforms all others under all scenarios? The existing scholarship has partly addressed this question. Dreiseitl and Ohno-Machado (2002) compare the performances of various classifiers and conclude logistic regression and artificial neutral network models tend to have lower generalization errors compared to decision tree and KNN. In addition, these two methods generate results that are easier to interpret than SVM. In contrast, Chen (2012) argues that SVM is more suitable in predicting bankruptcies than other methods after applying to financial data. While, Cutler, et al. (2007) propose that random forest is preferred with ecological data that often with high-dimensional and nonlinear features with complex interactions among variables. Furthermore, Maroco, et al. (2011) find random forests and linear discriminant analysis are the top two classifiers in predicting cognitive impairment (dementia), considering model sensitivity, specificity, and classification accuracy. At first glance, it seems it is the nature of data type (i.e., finance, geology, and medicine) that leads to different optimum classifiers. However, it may be caused by the distribution of the response variable: a balanced or imbalanced distribution. For symmetrical distribution, there are approximately equal numbers of positive and negative responses; For asymmetrical distribution, one type of response outnumbers the other by large margins.
+
+###Data and Methods
+This project attempts to examine the efficiencies (measured by a metrics of criteria) of different classification methods by looking into a dataset of a direct marketing campaign in a Portuguese banking institution. It contains 41188 observations and 19 variables. The dependent variable is whether the client has subscribed a term deposit service with binary answers: yes and no. There are 36548 negative answers with only 4640 positive answers. The full dataset can be accessed at: <https://archive.ics.uci.edu/ml/datasets/bank+marketing#>, and software RStudio (Version 1.1.423) is applied. One variable – pdays – needs to be deleted due to lack of variation, and another variable – duration – should be excluded from analysis due to high collinearity with the response variable. 
+
+```{r}
+#Data Cleaning
+banking=read.csv("bank-additional-full.csv",sep =";",header=T)#load the dataset
+banking[!complete.cases(banking),]# all cases are complete with no missing data
+#re-code factor variables into numeric
+banking$job= recode(banking$job, "'admin.'=1;'blue-collar'=2;'entrepreneur'=3;'housemaid'=4;'management'=5;'retired'=6;'self-employed'=7;'services'=8;'student'=9;'technician'=10;'unemployed'=11;'unknown'=12")
+banking$marital = recode(banking$marital, "'divorced'=1;'married'=2;'single'=3;'unknown'=4")
+banking$education = recode(banking$education, "'basic.4y'=1;'basic.6y'=2;'basic.9y'=3;'high.school'=4;'illiterate'=5;'professional.course'=6;'university.degree'=7;'unknown'=8")
+banking$default = recode(banking$default, "'no'=1;'yes'=2;'unknown'=3")
+banking$housing = recode(banking$housing, "'no'=1;'yes'=2;'unknown'=3")
+banking$loan = recode(banking$loan, "'no'=1;'yes'=2;'unknown'=3")
+banking$contact = recode(banking$loan, "'cellular'=1;'telephone'=2;")
+banking$month = recode(banking$month, "'mar'=1;'apr'=2;'may'=3;'jun'=4;'jul'=5;'aug'=6;'sep'=7;'oct'=8;'nov'=9;'dec'=10")
+banking$day_of_week = recode(banking$day_of_week, "'mon'=1;'tue'=2;'wed'=3;'thu'=4;'fri'=5;")
+banking$poutcome = recode(banking$poutcome, "'failure'=1;'nonexistent'=2;'success'=3;")
+banking$pdays=NULL #remove variable “pdays", b/c it has no variation
+banking$duration=NULL #remove variable “pdays", b/c itis collinear with the DV
+```
+
+```{r}
+plot(banking$y,main="Plot 1: Distribution of Dependent Variable")
+```
+As can be seen from plot 1, we obtain a visual understanding of the asymmetrical nature of the distribution with more “no”s than “yes”s. To begin with, the whole dataset is divided into two sets: training and test. I will use the first set to develop and train the statistical models and then apply the model to the second set to test for the prediction performance. In the meanwhile, I will record the training and test errors for all classifiers, respectively. 
+
+```{r}
+#split the dataset into training and test sets
+set.seed(1)
+index = round(nrow(banking)*0.2,digits=0)
+test.indices = sample(1:nrow(banking), index)
+banking.train=banking[-test.indices,] #80% training set
+banking.test=banking[test.indices,]   #20% test set
+YTrain = banking.train$y
+XTrain = banking.train %>% select(-y)
+YTest = banking.test$y
+XTest = banking.test %>% select(-y)
+records = matrix(NA, nrow=5, ncol=2) #creating a tracking record for KNN, Logistic Regression, Decision Tree, KNN, SVM.
+colnames(records) <- c("train.error","test.error") 
+rownames(records) <- c("Logistic","Tree","KNN","Random Forests","SVM")
+#######define the error rate function
+calc_error_rate <- function(predicted.value, true.value){
+  return(mean(true.value!=predicted.value)) 
+}
+```
+Logistic regression is a classification method that predicts the logit transformation of the probability of binary response variable. We choose "logit" as the link function and fit a logistic regression to the training set with all other variables as predictors. Then, we predict for the classifications for each y in the training set and calculate the training error based on the model. Similar steps are adopted for the test error.
+```{r}
+#####fit logistic model
+glm.fit = glm(y ~ age+factor(job)+factor(marital)+factor(education)+factor(default)+factor(housing)+factor(loan)+factor(contact)+factor(month)+factor(day_of_week)+campaign+previous+factor(poutcome)+emp.var.rate+cons.price.idx+cons.conf.idx+euribor3m+nr.employed, data=banking.train, family=binomial)
+######get train error######
+prob.training = predict(glm.fit,type="response")
+banking.train_glm = banking.train %>%
+  mutate(predicted.value=as.factor(ifelse(prob.training<=0.5, "no", "yes")))
+logit_traing_error<-calc_error_rate(predicted.value=banking.train_glm$predicted.value, true.value=YTrain)
+######get test error######
+prob.test = predict(glm.fit,banking.test,type="response")
+banking.test_glm = banking.test %>%
+  mutate(predicted.value2=as.factor(ifelse(prob.test<=0.5, "no", "yes")))
+logit_test_error <- calc_error_rate(predicted.value=banking.test_glm$predicted.value2, true.value=YTest)
+records[1,] <- c(logit_traing_error,logit_test_error)#write into the first row
+```
+Then, a decision tree is fitted. A decision tree is a tree-like classification method of binary response. We choose the best tree size that minimizes the misclassification error. Since there are multiple tree sizes of the same minimum estimated misclassification (3328), so the one with the smallest tree size (3) is the best fitting decision tree.
+```{r}
+#Decision Tree
+nobs = nrow(banking.train)
+bank_tree = tree(y~., data= banking.train,
+     na.action = na.pass,
+     control = tree.control(nobs , mincut =2, minsize = 10, mindev = 1e-3))
+#cross validation to prune the tree
+set.seed(3)
+cv = cv.tree(bank_tree,FUN=prune.misclass, K=10)
+cv
+best.size.cv = cv$size[which.min(cv$dev)]#identify the best cv
+best.size.cv#best = 3
+bank_tree.pruned<-prune.misclass(bank_tree, best=3)
+summary(bank_tree.pruned)
+```
+Then, we construct a decision tree of the best tree size of 3 and predict the labels of y both in the training and test errors. The results are recorded. There are 15 leaf nodes with a 0.5469 residual mean deviance and 0.1009 misclassification training error rate.
+```{r}
+######### training and test errors of bank_tree.pruned
+pred_train = predict(bank_tree.pruned, banking.train, type="class")
+pred_test  = predict(bank_tree.pruned, banking.test,  type="class")
+#####training error
+DT_training_error <- calc_error_rate(predicted.value=pred_train, true.value=YTrain)
+####test error
+DT_test_error <- calc_error_rate(predicted.value=pred_test, true.value=YTest)
+records[2,] <- c(DT_training_error,DT_test_error)
+```
+The next method is KNN that classifies a new observation on the basis of the surrounding observations. This method does not need to build a statistical model and does not have distributional requirement. To identify the best number of neighbors, we follow the following do.chunk function on the basis of 10-fold cross-validation. 
+
+```{r}
+nfold = 10
+set.seed(1)
+folds = seq.int(nrow(banking.train)) %>%
+  cut(breaks = nfold, labels=FALSE) %>% sample
+do.chunk <- function(chunkid, folddef, Xdat, Ydat, k){ 
+  train = (folddef!=chunkid)
+  Xtr = Xdat[train,]
+  Ytr = Ydat[train]
+  Xvl = Xdat[!train,]
+  Yvl = Ydat[!train]
+  predYtr = knn(train = Xtr, test = Xtr, cl = Ytr, k = k)
+  predYvl = knn(train = Xtr, test = Xvl, cl = Ytr, k = k)
+  data.frame(fold =chunkid,
+             train.error = calc_error_rate(predYtr, Ytr),
+             val.error = calc_error_rate(predYvl, Yvl))
+  }
+###########
+error.folds=NULL
+kvec = c(1, seq(10, 50, length.out=5))
+set.seed(1)###Take a while to run
+for (j in kvec){
+  tmp = ldply(1:nfold, do.chunk,
+              folddef=folds, Xdat=XTrain, Ydat=YTrain, k=j)
+  tmp$neighbors = j
+  error.folds = rbind(error.folds, tmp)
+}
+errors = melt(error.folds, id.vars=c("fold","neighbors"), value.name= "error" )
+val.error.means = errors %>%
+  filter(variable== "val.error" ) %>%
+  group_by(neighbors, variable) %>%
+  summarise_each(funs(mean), error) %>%
+  ungroup() %>%
+  filter(error==min(error))
+numneighbor = max(val.error.means$neighbors)
+numneighbor#the best number of neighbors =20
+```
+As it turns out, choosing 20 neighbors can minimize the cross-validation error rate.
+```{r}
+#training error
+set.seed(20)
+pred.YTtrain = knn(train=XTrain, test=XTrain, cl=YTrain, k=20)
+knn_traing_error <- calc_error_rate(predicted.value=pred.YTtrain, true.value=YTrain)
+#test error =0.095
+set.seed(20)
+pred.YTest = knn(train=XTrain, test=XTest, cl=YTrain, k=20)
+knn_test_error <- calc_error_rate(predicted.value=pred.YTest, true.value=YTest)
+records[3,] <- c(knn_traing_error,knn_test_error)
+```
+Next, random forests is an ensemble learning method that constructs a number of decision trees before moving on to classifying on the basis of mode. Therefore, random forest is a more accurate classification method than decision tree. 
+```{r}
+set.seed(1)
+RF_banking_train = randomForest(y ~ ., data=banking.train, importance=TRUE)#random forests with default settings
+######### training and test errors of bank_tree.pruned
+pred_train_RF = predict(RF_banking_train, banking.train, type="class")
+pred_test_RF  = predict(RF_banking_train, banking.test,  type="class")
+#####training error
+RF_training_error <- calc_error_rate(predicted.value=pred_train_RF, true.value=YTrain)
+####test error
+RF_test_error <- calc_error_rate(predicted.value=pred_test_RF, true.value=YTest)
+records[4,] <- c(RF_training_error,RF_test_error)
+```
+Finally, SVM is a supervised learning method that operates by constructing a hyperplane or a set of hyperplanes to “cut” space into multiple parts. After setting cost values to three values (0.1, 1, and 10), I find the best performing SVM model is when setting cost value equal to 1 that minimizes cross-validation error rate. 
+```{r}
+### support vector machines
+set.seed(1)
+tune.out=tune(svm, y ~., data=banking.train, kernel="radial",ranges=list(cost=c(0.1,1,10)))
+summary(tune.out)$best.parameters
+best_model = tune.out$best.model#the best model
+svm_fit=svm(y~., data=banking.train,kernel="radial",gamma=0.05555556,cost=1,probability=TRUE)
+svm_best_train = predict(svm_fit,banking.train,type="class")
+svm_best_test  = predict(svm_fit,banking.test,type="class")
+#####training error
+svm_training_error <- calc_error_rate(predicted.value=svm_best_train, true.value=YTrain)
+####test error
+svm_test_error <- calc_error_rate(predicted.value=svm_best_test, true.value=YTest)
+records[5,] <- c(svm_training_error,svm_test_error)
+records
+```
+####Results
+So far, we have calculated training and test errors for all of these five classification methods. KNN has the largest test error, and SVM has the smallest test error. However, the margins of differences are negligible. Also, it should be pointed out that random forests overfit the training set as its training error is relatively small, but the test error is large. So, ROC curves and area under the curves (AUC) are needed to further compare these models.
+
+ROC is a graphical plot that illustrates the relationship between true positive rate (TPR) and false positive rate (FPR). The following steps are necessary to plot ROC curves and calculate AUC, respectively. 
+```{r}
+########### ROC curves and AUC for logistic regression  ###########
+library(ROCR)
+#creating a tracking record
+Area_Under_the_Curve = matrix(NA, nrow=5, ncol=1) # for KNN, Logistic Regression, Decision Tree, KNN, SVM.
+colnames(Area_Under_the_Curve) <- c("AUC") 
+rownames(Area_Under_the_Curve) <- c("Logistic","Tree","KNN","Random Forests","SVM")
+#ROC for logistic regression
+prob_test <- predict(glm.fit,banking.test,type="response")
+pred_logit<- prediction(prob_test,banking.test$y)
+performance_logit <- performance(pred_logit,measure = "tpr", x.measure="fpr")
+#Area under the curve (AUC) for logistical regression 
+auc_logit = performance(pred_logit, "auc")@y.values
+Area_Under_the_Curve[1,] <-c(as.numeric(auc_logit))
+
+########### ROC curves and AUC for decision tree  ########### 
+#ROC curves for decision tree 
+pred_DT<-predict(bank_tree.pruned, banking.test,type="vector")
+pred_DT <- prediction(pred_DT[,2],banking.test$y)
+performance_DT <- performance(pred_DT,measure = "tpr",x.measure= "fpr")
+#Area under the curve (AUC) for decision tree 
+auc_dt = performance(pred_DT,"auc")@y.values
+Area_Under_the_Curve[2,] <- c(as.numeric(auc_dt))
+
+########### ROC curves and AUC for KNN  ###########  
+knn_model = knn(train=XTrain, test=XTrain, cl=YTrain, k=20,prob=TRUE)
+prob <- attr(knn_model, "prob")
+prob <- 2*ifelse(knn_model == "-1", prob,1-prob) - 1
+pred_knn <- prediction(prob, YTrain)
+performance_knn <- performance(pred_knn, "tpr", "fpr")
+#Area under the curve (AUC) for KNN
+auc_knn <- performance(pred_knn,"auc")@y.values
+Area_Under_the_Curve[3,] <- c(as.numeric(auc_knn))
+
+########### ROC curves and AUC for random forests  ########### 
+#ROC curves for random forests 
+pred_RF<-predict(RF_banking_train, banking.test,type="prob")
+pred_class_RF <- prediction(pred_RF[,2],banking.test$y)
+performance_RF <- performance(pred_class_RF,measure = "tpr",x.measure= "fpr")
+#Area under the curve (AUC) for decision tree 
+auc_RF = performance(pred_class_RF,"auc")@y.values
+Area_Under_the_Curve[4,] <- c(as.numeric(auc_RF))
+
+########### ROC curves and AUC for SVM  ###########  
+svm_fit_prob = predict(svm_fit,type="prob",newdata=banking.test,probability=TRUE)
+svm_fit_prob_ROCR = prediction(attr(svm_fit_prob,"probabilities")[,2],banking.test$y=="yes")
+performance_svm <- performance(svm_fit_prob_ROCR, "tpr","fpr")
+#Area under the curve (AUC) for svm
+auc_svm<-performance(svm_fit_prob_ROCR,"auc")@y.values[[1]]
+Area_Under_the_Curve[5,] <- c(as.numeric(auc_svm))
+```
+As can be easily seen from the plot, KNN (blue line) has a steeper slope and so is preferred over the others, which can be further supported by its largest AUC value (0.847). In comparison, other classifiers have AUC below 0.8. In the context of the banking example, TPR refers to the percentage of clients who predicted to subscribe a term deposit out of the total population who actually did, and FPR is the percentage of people who predicted to subscribe a deposit out of the total number of people who actually did not subscribe. Thus, we are more interested in false positive, because this group of people who predicted to subscribe but actually haven't done so is our targeting group, meaning they fit the criteria of subscribing but haven't made up their mind yet. So, the next step for the marketing and sales teams is to target this group of clients instead of the total population.
+```{r}
+########### ROC plots for these five classification methods ###########
+plot(performance_logit,col=2,lwd=2,main="ROC Curves for These Five Classification Methods")#logit
+legend(0.6, 0.6, c('logistic', 'Decision Tree', 'KNN','Random Forests','SVM'), 2:6)
+plot(performance_DT,col=3,lwd=2,add=TRUE)#decision tree
+plot(performance_knn,col=4,lwd=2,add=TRUE)#knn
+plot(performance_RF,col=5,lwd=2,add=TRUE)#RF
+plot(performance_svm,col=6,lwd=2,add=TRUE)#svm
+abline(0,1)
+Area_Under_the_Curve
+```
+Furthermore, a confusion table for the best performing method (KNN) is constructed. TPR = 170/(170+734)=0.188, and FPR = 173/(173+7161)= 0.024. With asymmetrical distribution, we have successfully maintained a low level of FPR but the TPR is undesirably low as well. It is impossible to infer what factors lead to such low level of TPR simply based on the evidences available; more researches need to be done.
+```{r}
+#the confusion table
+table(truth = banking.test$y,predictions = pred.YTest)
+```
+#####Discussion and Future Research
+As stated at the very beginning, the project aims to compare different classification methods with asymmetrical distribution of response variable. As it turns out, these two types of error fail to pick the best model out of the crowd, probably because of the asymmetrical nature of response variable as positive and negative responses are intertwined together, which makes it difficult to disentangle the close ties. In addition, it may be caused by the data collection process at the first place, which is also the area that future work needs to address. Later on, ROC and AUC methods appear to be superior techniques and successfully distinguish KNN as the best performing method compared to the others, even though the TPR is not as desirably high as usual. Actually, no single method generates a decently high TPR. Again, the underlying reason may be caused by the quality of the dataset itself and the way how data points are connected, which reminds us of trying a subset of the dataset or predictors and repeating the model construction and selection procedures in future work. 
+This project is just a preliminary comparison of different classification methods with asymmetrical distribution, and it does not attempt to generalize the conclusion of classification efficiencies derived from merely one dataset to other situations. As being constantly argued, this project argues that there are situations under which nonparametric classifiers such as KNN stand out over others when the distribution of response variable is unclear and data points are closely intertwined. Also, it should be noted that this paper only tried one hyperplane with the SVM method, and future work should attempt a set of hyperplanes.
+
+######References
+Albayrak, A. S. (2009). Classification of domestic and foreign commercial banks in Turkey based on financial efficiency: A comparison of decision tree, logistic regression and discriminant analysis models. Süleyman Demirel Üniversitesi İktisadi ve İdari Bilimler Fakültesi Dergisi, 14(2).
+
+Chen, M. Y. (2012). Comparing traditional statistics, decision tree classification and support vector machine techniques for financial bankruptcy prediction. Intelligent Automation & Soft Computing, 18(1), 65-73.
+
+Cutler, D. R., Edwards, T. C., Beard, K. H., Cutler, A., Hess, K. T., Gibson, J., & Lawler, J. J. (2007). Random forests for classification in ecology. Ecology, 88(11), 2783-2792.
+
+Dreiseitl, S., & Ohno-Machado, L. (2002). Logistic regression and artificial neural network classification models: a methodology review. Journal of biomedical informatics, 35(5), 352-359.
+
+Franks, A., (2017). Lecture 5 Classification with Logistic Regression, p.1.
+
+Maroco, J., Silva, D., Rodrigues, A., Guerreiro, M., Santana, I., & de Mendonça, A. (2011). Data mining methods in the prediction of Dementia: A real-data comparison of the accuracy, sensitivity and specificity of linear discriminant analysis, logistic regression, neural networks, support vector machines, classification trees and random forests. BMC research notes, 4(1), 299.

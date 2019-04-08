@@ -1,0 +1,16 @@
+#####Discussion and Future Research
+As stated at the very beginning, the project aims to compare different classification methods with asymmetrical distribution of response variable. As it turns out, these two types of error fail to pick the best model out of the crowd, probably because of the asymmetrical nature of response variable as positive and negative responses are intertwined together, which makes it difficult to disentangle the close ties. In addition, it may be caused by the data collection process at the first place, which is also the area that future work needs to address. Later on, ROC and AUC methods appear to be superior techniques and successfully distinguish KNN as the best performing method compared to the others, even though the TPR is not as desirably high as usual. Actually, no single method generates a decently high TPR. Again, the underlying reason may be caused by the quality of the dataset itself and the way how data points are connected, which reminds us of trying a subset of the dataset or predictors and repeating the model construction and selection procedures in future work. 
+This project is just a preliminary comparison of different classification methods with asymmetrical distribution, and it does not attempt to generalize the conclusion of classification efficiencies derived from merely one dataset to other situations. As being constantly argued, this project argues that there are situations under which nonparametric classifiers such as KNN stand out over others when the distribution of response variable is unclear and data points are closely intertwined. Also, it should be noted that this paper only tried one hyperplane with the SVM method, and future work should attempt a set of hyperplanes.
+
+######References
+Albayrak, A. S. (2009). Classification of domestic and foreign commercial banks in Turkey based on financial efficiency: A comparison of decision tree, logistic regression and discriminant analysis models. Süleyman Demirel Üniversitesi İktisadi ve İdari Bilimler Fakültesi Dergisi, 14(2).
+
+Chen, M. Y. (2012). Comparing traditional statistics, decision tree classification and support vector machine techniques for financial bankruptcy prediction. Intelligent Automation & Soft Computing, 18(1), 65-73.
+
+Cutler, D. R., Edwards, T. C., Beard, K. H., Cutler, A., Hess, K. T., Gibson, J., & Lawler, J. J. (2007). Random forests for classification in ecology. Ecology, 88(11), 2783-2792.
+
+Dreiseitl, S., & Ohno-Machado, L. (2002). Logistic regression and artificial neural network classification models: a methodology review. Journal of biomedical informatics, 35(5), 352-359.
+
+Franks, A., (2017). Lecture 5 Classification with Logistic Regression, p.1.
+
+Maroco, J., Silva, D., Rodrigues, A., Guerreiro, M., Santana, I., & de Mendonça, A. (2011). Data mining methods in the prediction of Dementia: A real-data comparison of the accuracy, sensitivity and specificity of linear discriminant analysis, logistic regression, neural networks, support vector machines, classification trees and random forests. BMC research notes, 4(1), 299.

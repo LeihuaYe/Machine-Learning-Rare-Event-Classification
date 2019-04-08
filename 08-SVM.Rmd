@@ -1,0 +1,17 @@
+Finally, SVM is a supervised learning method that operates by constructing a hyperplane or a set of hyperplanes to “cut” space into multiple parts. After setting cost values to three values (0.1, 1, and 10), I find the best performing SVM model is when setting cost value equal to 1 that minimizes cross-validation error rate. 
+```{r}
+### support vector machines
+set.seed(1)
+tune.out=tune(svm, y ~., data=banking.train, kernel="radial",ranges=list(cost=c(0.1,1,10)))
+summary(tune.out)$best.parameters
+best_model = tune.out$best.model#the best model
+svm_fit=svm(y~., data=banking.train,kernel="radial",gamma=0.05555556,cost=1,probability=TRUE)
+svm_best_train = predict(svm_fit,banking.train,type="class")
+svm_best_test  = predict(svm_fit,banking.test,type="class")
+#####training error
+svm_training_error <- calc_error_rate(predicted.value=svm_best_train, true.value=YTrain)
+####test error
+svm_test_error <- calc_error_rate(predicted.value=svm_best_test, true.value=YTest)
+records[5,] <- c(svm_training_error,svm_test_error)
+records
+```

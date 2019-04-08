@@ -1,0 +1,27 @@
+Then, a decision tree is fitted. A decision tree is a tree-like classification method of binary response. We choose the best tree size that minimizes the misclassification error. Since there are multiple tree sizes of the same minimum estimated misclassification (3328), so the one with the smallest tree size (3) is the best fitting decision tree.
+```{r}
+#Decision Tree
+nobs = nrow(banking.train)
+bank_tree = tree(y~., data= banking.train,
+     na.action = na.pass,
+     control = tree.control(nobs , mincut =2, minsize = 10, mindev = 1e-3))
+#cross validation to prune the tree
+set.seed(3)
+cv = cv.tree(bank_tree,FUN=prune.misclass, K=10)
+cv
+best.size.cv = cv$size[which.min(cv$dev)]#identify the best cv
+best.size.cv#best = 3
+bank_tree.pruned<-prune.misclass(bank_tree, best=3)
+summary(bank_tree.pruned)
+```
+Then, we construct a decision tree of the best tree size of 3 and predict the labels of y both in the training and test errors. The results are recorded. There are 15 leaf nodes with a 0.5469 residual mean deviance and 0.1009 misclassification training error rate.
+```{r}
+######### training and test errors of bank_tree.pruned
+pred_train = predict(bank_tree.pruned, banking.train, type="class")
+pred_test  = predict(bank_tree.pruned, banking.test,  type="class")
+#####training error
+DT_training_error <- calc_error_rate(predicted.value=pred_train, true.value=YTrain)
+####test error
+DT_test_error <- calc_error_rate(predicted.value=pred_test, true.value=YTest)
+records[2,] <- c(DT_training_error,DT_test_error)
+```

@@ -1,0 +1,42 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages("readr","knitr","dplyr","plyr","reshape2","caret","pROC","tree","randomForest","e1071")
+library(readr)
+library(knitr)
+library(dplyr)
+library(plyr)
+library(class)
+library(reshape2)
+library(tree)
+library(randomForest)
+library(car)
+library(e1071)
+```
+
+#Abstract
+What is the best classification method? This is the most frequently asked classification question in machine learning (ML). Currently, ML engineers have tried to answer the question from various perspectives including data type but left another perspective – the distribution of the response variable – unexplored. This project aims to fill the gap by applying various ML techniques – logistic model, decision tree, KNN, random forest, and support vector machines (SVM) – to a banking institution in Portugal, identifying potential customers who will subscribe to a banking service. To measure the performance of each classifier, I will adopt the following metrics: training/test errors, ROC, and AUC. As it turns out, all classifiers have very close training and test errors with marginal differences, and ROC and AUC identify KNN as the best fitting model. In the end, the paper concludes non-parametric classifiers like KNN has comparative advantage when there is an unsymmetrical distribution. 
+
+##Introduction
+There are various classifiers in the field of ML, and it is possible to select the best performing technique on the basis of their ability of predicting outcomes accurately. Specifically, best model comes with the smallest train/test errors after cross-validation. We may have different classifiers under various scenarios, and one remaining question is under what conditions one type of method is preferred over others. Is it possible to come up with a general classifier that outperforms all others under all scenarios? The existing scholarship has partly addressed this question. Dreiseitl and Ohno-Machado (2002) compare the performances of various classifiers and conclude logistic regression and artificial neutral network models tend to have lower generalization errors compared to decision tree and KNN. In addition, these two methods generate results that are easier to interpret than SVM. In contrast, Chen (2012) argues that SVM is more suitable in predicting bankruptcies than other methods after applying to financial data. While, Cutler, et al. (2007) propose that random forest is preferred with ecological data that often with high-dimensional and nonlinear features with complex interactions among variables. Furthermore, Maroco, et al. (2011) find random forests and linear discriminant analysis are the top two classifiers in predicting cognitive impairment (dementia), considering model sensitivity, specificity, and classification accuracy. At first glance, it seems it is the nature of data type (i.e., finance, geology, and medicine) that leads to different optimum classifiers. However, it may be caused by the distribution of the response variable: a balanced or imbalanced distribution. For symmetrical distribution, there are approximately equal numbers of positive and negative responses; For asymmetrical distribution, one type of response outnumbers the other by large margins.
+
+###Data and Methods
+This project attempts to examine the efficiencies (measured by a metrics of criteria) of different classification methods by looking into a dataset of a direct marketing campaign in a Portuguese banking institution. It contains 41188 observations and 19 variables. The dependent variable is whether the client has subscribed a term deposit service with binary answers: yes and no. There are 36548 negative answers with only 4640 positive answers. The full dataset can be accessed at: <https://archive.ics.uci.edu/ml/datasets/bank+marketing#>, and software RStudio (Version 1.1.423) is applied. One variable – pdays – needs to be deleted due to lack of variation, and another variable – duration – should be excluded from analysis due to high collinearity with the response variable. 
+
+```{r}
+#Data Cleaning
+banking=read.csv("bank-additional-full.csv",sep =";",header=T)#load the dataset
+banking[!complete.cases(banking),]# all cases are complete with no missing data
+#re-code factor variables into numeric
+banking$job= recode(banking$job, "'admin.'=1;'blue-collar'=2;'entrepreneur'=3;'housemaid'=4;'management'=5;'retired'=6;'self-employed'=7;'services'=8;'student'=9;'technician'=10;'unemployed'=11;'unknown'=12")
+banking$marital = recode(banking$marital, "'divorced'=1;'married'=2;'single'=3;'unknown'=4")
+banking$education = recode(banking$education, "'basic.4y'=1;'basic.6y'=2;'basic.9y'=3;'high.school'=4;'illiterate'=5;'professional.course'=6;'university.degree'=7;'unknown'=8")
+banking$default = recode(banking$default, "'no'=1;'yes'=2;'unknown'=3")
+banking$housing = recode(banking$housing, "'no'=1;'yes'=2;'unknown'=3")
+banking$loan = recode(banking$loan, "'no'=1;'yes'=2;'unknown'=3")
+banking$contact = recode(banking$loan, "'cellular'=1;'telephone'=2;")
+banking$month = recode(banking$month, "'mar'=1;'apr'=2;'may'=3;'jun'=4;'jul'=5;'aug'=6;'sep'=7;'oct'=8;'nov'=9;'dec'=10")
+banking$day_of_week = recode(banking$day_of_week, "'mon'=1;'tue'=2;'wed'=3;'thu'=4;'fri'=5;")
+banking$poutcome = recode(banking$poutcome, "'failure'=1;'nonexistent'=2;'success'=3;")
+banking$pdays=NULL #remove variable “pdays", b/c it has no variation
+banking$duration=NULL #remove variable “pdays", b/c itis collinear with the DV
+```

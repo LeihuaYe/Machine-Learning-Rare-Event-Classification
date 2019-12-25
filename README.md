@@ -16,7 +16,8 @@ This dataset is collected by a Portuguese banking institution to assess the effe
 Leihua Ye is a Ph.D. Candidate in political science and has received a Master’s degree in Statistics from the University of California, Santa Barbara. Leihua is interested in user behaviors, public opinion and behavior, research design, big data, and Machine Learning.
 
 ## Contact
+Email: yeleihua@gmail.com
 
-yeleihua@gmail.com
-www.linkedin.com/in/leihuaye
-https://medium.com/@leihua_ye
+LinkedIn: www.linkedin.com/in/leihuaye
+
+Tech Blog: https://medium.com/@leihua_ye
